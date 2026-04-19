@@ -1,7 +1,7 @@
 // Plugin configuration, this is used in the administration when plugins are loaded
 var pluginConfig = {
     name: 'Enhanced Tuning',
-    version: '2.06.3',
+    version: '3.0',
     author: 'ODX',
     frontEndPath: 'EnhancedTuning/Enhanced_Tuning_Main.js'
 }
