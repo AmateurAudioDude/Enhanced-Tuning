@@ -1,25 +1,23 @@
 # Enhanced Tuning
-
-Enhanced Tuning Plugin v2.6 for FM-DX-Webserver
+Enhanced Tuning Plugin v3.0 for FM-DX-Webserver
 <br>
 <br>
-Update v2.06.3 - Seamless Admin Integration & Strict Tuning Limits
-
- - Separate AM & FM Limits: You can now set independent lower and upper tuning boundaries specifically for AM and FM bands.
-
+🔥 What's new in v3.0 - The Ultimate Tuning Overhaul!
+This is the biggest update yet, completely rebuilding how the plugin operates and interacts with the server.
+ - Dedicated Admin Panel UI: Say goodbye to editing text files! All plugin settings, limits, layout choices, and band configurations are now managed through a sleek, built-in Admin Panel. Just click the new ⚙️ icon next to the FM button (Requires Admin login).
+ - Custom AM / SW Scanner Integration: The Highpoint Scanner plugin natively struggles below 30 MHz. Enhanced Tuning now intelligently intercepts scanner commands on AM/SW bands and runs a custom local scanner. You can even set individual signal thresholds for all 17 sub-bands directly in the Admin Panel! (Note: This feature is still being fine-tuned).
+ - Smart kHz Direct Input: Entering frequencies on AM/SW is finally natural. Typing 9640 or 693 on AM bands will now automatically and seamlessly tune you to 9.640 MHz or 0.693 MHz without conflicting with the webserver's core FM shortcuts or other plugins.
+ - Band Customization: You can now rename bands (e.g., change "OIRT" to "eFM"), adjust their visual boundaries, and set custom default tune frequencies entirely from the Admin Panel.
+ - Multi-Instance Support: Running multiple tuners on the same PC? The plugin now fully supports the --config startup parameter, automatically generating separate, isolated configuration files for each of your tuners.
+ - Mobile UI Fixes & Stability: Improved responsive design for smaller screens (band limits no longer overlap), squashed bugs related to tuning limits, and added proper session expiration handling.
 <br><br>
-*A plugin for FM-DX-Webserver that enhances the user's tuning experience.*
+A plugin for FM-DX-Webserver that enhances the user's tuning experience.
 <br><br>
-
  - Band buttons to make it easier to navigate across a wide frequency range.
-
  - Adjustable tune step for both fine and coarse tuning. (FM: 10 kHz, 100 kHz and 1 MHz. AM: 1 kHz, 10 kHz, 100 kHz and 1 MHz)
-
  - AM bandwidth control to improve the DX experience. (3kHz, 4kHz, 6kHz, 8kHz) *
-
  - USA tuning steps for the FM (200kHz) and MW (10kHz) bands.
-
- - You can choose between two layouts and configure what is displayed in the config file.
+ - You can choose between two layouts and configure what is displayed in the new Admin Panel.
 
 <br>
     
