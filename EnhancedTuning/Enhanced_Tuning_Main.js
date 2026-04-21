@@ -201,7 +201,7 @@
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.type = 'text/css';
-    link.href = '/public/Enhanced_Tuning.css';
+    link.href = '/enhanced_tuning/public/Enhanced_Tuning.css';
     document.head.appendChild(link);
     return new Promise((resolve) => {
       link.onload = () => resolve();
