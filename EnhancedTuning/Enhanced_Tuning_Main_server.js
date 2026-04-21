@@ -88,7 +88,7 @@ const checkStrictAdmin = (req, res, next) => {
     return res.status(401).send('Unauthorized. You must be an administrator.');
 };
 
-endpointsRouter.use('/public', express.static(path.join(__dirname, 'public')));
+endpointsRouter.use('/enhanced_tuning/public', express.static(path.join(__dirname, 'public')));
 
 endpointsRouter.get('/enhanced_tuning/api/auth-check', (req, res) => {
     res.json({
