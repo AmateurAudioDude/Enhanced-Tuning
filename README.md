@@ -1,8 +1,30 @@
 # Enhanced Tuning
-Enhanced Tuning Plugin v3.0 for FM-DX-Webserver
+
 <br>
+<img width="1346" height="705" alt="Skjermbilde fra 2026-04-27 20-49-49" src="https://github.com/user-attachments/assets/bef356b9-2297-496b-bab7-be970e6fed19" />
+
+<br><br>
+<h3>What's new in v3.1 - The Retro & Shortwave Update!</h3>
+This update brings massive visual upgrades to your tuning experience, along with highly requested shortwave features and crucial under-the-hood fixes.
+
+<ul>
+ <li><strong>Analog Scale Integration:</strong> A massive thank you to <strong>Highpoint</strong> for providing a custom-tailored version of his brilliant <a href="https://github.com/Highpoint2000/RetroDesign" target="_blank">Retro Design Elements Plugin (v1.2)</a>! The beautiful analog dial and dual-rotary tuning knobs are now fully integrated directly into Enhanced Tuning, perfectly synced with our band-switching logic.</li>
+ <li><strong>SW Station Names on the Dial:</strong> Shortwave tuning just got a lot easier! When tuning inside SW sub-bands (like 31m or 49m), active station names are now projected dynamically onto the analog dial glass. Distance calculations (km) in the tooltip are now automatically mapped to your server's exact QTH coordinates. <em>(Note: This feature requires the <a href="https://github.com/Overland-DX/AM-Station-Info)" target="_blank">AM Station Info Plugin</a> to be installed and active).</em></li>
+
+ <li><strong>Some Bug Fixes</strong></li>
+</ul>
+
+<p style="color: #e74c3c; font-weight: bold;">⚠️ IMPORTANT UPGRADE NOTE:</p>
+<p>When installing this update, it is highly recommended that you delete the following old files from your installation folder to prevent conflicts with the new Admin Panel and UI logic:</p>
+<ul>
+ <li><code>/EnhancedTuning/public/Enhanced_Tuning.css</code></li>
+ <li><code>/EnhancedTuning/config.json</code></li>
+</ul>
 <br>
-🔥 What's new in v3.0 - The Ultimate Tuning Overhaul!
+
+
+<br><br>
+What's new in v3.0 - The Ultimate Tuning Overhaul!
 This is the biggest update yet, completely rebuilding how the plugin operates and interacts with the server.
  - Dedicated Admin Panel UI: Say goodbye to editing text files! All plugin settings, limits, layout choices, and band configurations are now managed through a sleek, built-in Admin Panel. Just click the new ⚙️ icon next to the FM button (Requires Admin login).
  - Experimental Scanner plugin Integration: Designed to work alongside the excellent Highpoint Scanner plugin! Enhanced Tuning now intercepts scanner commands below 30 MHz to keep your searches strictly within your active sub-band boundaries (like looping seamlessly within the 31m band). Because AM noise floors vary wildly, you can now set individual signal thresholds for all 17 sub-bands directly in the Admin Panel. (Note: This custom local scanner is highly experimental and still being fine-tuned!)
