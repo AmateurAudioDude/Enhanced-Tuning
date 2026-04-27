@@ -5,19 +5,18 @@ const fs = require('fs');
 const express = require('express');
 const endpointsRouter = require('../../server/endpoints');
 
+// --- STØTTE FOR FLERE INSTANSER (--config) ---
 let configSuffix = '';
 const configArgIndex = process.argv.indexOf('--config');
 if (configArgIndex !== -1 && process.argv.length > configArgIndex + 1) {
     configSuffix = '_' + process.argv[configArgIndex + 1];
 } else if (process.env.CONFIG) {
-    // Fallback hvis webserveren sender det som en miljøvariabel
     configSuffix = '_' + process.env.CONFIG;
 }
-
-// Hvis man kjører "node . --config tuner2", blir filen lagret som: "enhanced_tuning_config_tuner2.json"
 const CONFIG_FILE = path.join(__dirname, `enhanced_tuning_config${configSuffix}.json`);
+// ---------------------------------------------
 
-// Default Configuration - Inneholder ALT
+// Default Configuration
 let pluginConfig = {
     // Layout & UI
     LAYOUT_STYLE: 'modern',
@@ -32,39 +31,52 @@ let pluginConfig = {
     TUNING_STANDARD: 'international',
     ENABLE_MW_STEP_TOGGLE: true,
     ENABLE_FREQUENCY_MEMORY: true,
+    ENABLE_SMART_KHZ_INPUT: true,
     ENABLE_AM_BW: true,
     FIRMWARE_TYPE: 'FM-DX-Tuner',
     ENABLE_DEFAULT_AM_BW: false,
     DEFAULT_AM_BW_VALUE: '56000',
-    ENABLE_SMART_KHZ_INPUT: true,
 
     // Limits
     overrideServerTuningLimit: true,
     fmLower: 64.0, fmUpper: 108.0,
     amLower: 0.144, amUpper: 30.0,
-    ENABLE_AM_SCANNER: true,
 
     // Egendefinerte Bånd & Navn
     customMainBands: {
-          'AM_SUPER': { name: 'AM Super', tune: 1.000, start: 0.144, end: 27.0 },
-          'FM': { name: 'FM', tune: 87.500, start: 87.5, end: 108.0 },
-          'OIRT': { name: 'OIRT', tune: 65.900, start: 65.9, end: 74.0 },
-          'SW': { name: 'SW', tune: 9.400, start: 1.710, end: 27.0 },
-          'MW': { name: 'MW', tune: 0.504, start: 0.504, end: 1.701 },
-          'LW': { name: 'LW', tune: 0.144, start: 0.144, end: 0.351 }
-      },
+        'AM_SUPER': { name: 'AM', tune: 1.000, start: 0.144, end: 27.0 },
+        'FM': { name: 'FM', tune: 87.500, start: 87.5, end: 108.0 },
+        'OIRT': { name: 'OIRT', tune: 65.900, start: 65.9, end: 74.0 },
+        'SW': { name: 'SW', tune: 9.400, start: 1.710, end: 27.0 },
+        'MW': { name: 'MW', tune: 0.504, start: 0.504, end: 1.701 },
+        'LW': { name: 'LW', tune: 0.144, start: 0.144, end: 0.351 }
+    },
+    customSwBands: {
+        '160m': { tune: 1.8, start: 1.8, end: 2.0 }, '120m': { tune: 2.3, start: 2.3, end: 2.5 },
+        '90m': { tune: 3.2, start: 3.2, end: 3.4 }, '75m': { tune: 3.9, start: 3.9, end: 4.0 },
+        '60m': { tune: 4.75, start: 4.75, end: 5.06 }, '49m': { tune: 5.9, start: 5.9, end: 6.2 },
+        '41m': { tune: 7.2, start: 7.2, end: 7.6 }, '31m': { tune: 9.4, start: 9.4, end: 9.9 },
+        '25m': { tune: 11.6, start: 11.6, end: 12.1 }, '22m': { tune: 13.57, start: 13.57, end: 13.87 },
+        '19m': { tune: 15.1, start: 15.1, end: 15.83 }, '16m': { tune: 17.48, start: 17.48, end: 17.9 },
+        '15m': { tune: 18.9, start: 18.9, end: 19.02 }, '13m': { tune: 21.45, start: 21.45, end: 21.85 },
+        '11m': { tune: 25.67, start: 25.67, end: 26.1 }
+    },
 
-      // --- Fallback for Shortwave sub-bånd (Tune, Grenser) ---
-      customSwBands: {
-          '160m': { tune: 1.8, start: 1.8, end: 2.0 }, '120m': { tune: 2.3, start: 2.3, end: 2.5 },
-          '90m': { tune: 3.2, start: 3.2, end: 3.4 }, '75m': { tune: 3.9, start: 3.9, end: 4.0 },
-          '60m': { tune: 4.75, start: 4.75, end: 5.06 }, '49m': { tune: 5.9, start: 5.9, end: 6.2 },
-          '41m': { tune: 7.2, start: 7.2, end: 7.6 }, '31m': { tune: 9.4, start: 9.4, end: 9.9 },
-          '25m': { tune: 11.6, start: 11.6, end: 12.1 }, '22m': { tune: 13.57, start: 13.57, end: 13.87 },
-          '19m': { tune: 15.1, start: 15.1, end: 15.83 }, '16m': { tune: 17.48, start: 17.48, end: 17.9 },
-          '15m': { tune: 18.9, start: 18.9, end: 19.02 }, '13m': { tune: 21.45, start: 21.45, end: 21.85 },
-          '11m': { tune: 25.67, start: 25.67, end: 26.1 }
-      },
+    // Plugins Integration
+    ENABLE_AM_SCANNER: false,
+    ENABLE_ANALOG_SCALE: true,
+    ANALOG_SCALE_AUTOSTART: true,
+    SHOW_TUNING_KNOB: true,
+    ANALOG_SCALE_ENABLE_FM: true,
+    ANALOG_SCALE_BRIGHTNESS: 1.5,
+    ENABLE_VU_METER: true,
+    VU_METER_GAIN_FM: 1.5,
+    VU_METER_GAIN_AM: 1.5,
+    VU_METER_MODE: 'RMS',
+    ENABLE_MAGIC_EYE: true,
+    ENABLE_PS_SCALE: true,
+    ENABLE_SPECTRUM_OVERLAY: true,
+    ENABLE_SW_STATIONS_SCALE: false,
 
     // AM Scanner Thresholds
     thr_LW: 35, thr_MW: 35, thr_160m: 35, thr_120m: 35, thr_90m: 35,
@@ -73,7 +85,6 @@ let pluginConfig = {
     thr_13m: 35, thr_11m: 35
 };
 
-// Last config hvis den eksisterer
 if (fs.existsSync(CONFIG_FILE)) {
     try {
         const data = fs.readFileSync(CONFIG_FILE, 'utf8');
@@ -88,7 +99,6 @@ const checkStrictAdmin = (req, res, next) => {
     return res.status(401).send('Unauthorized. You must be an administrator.');
 };
 
-endpointsRouter.use('/enhanced_tuning/public', express.static(path.join(__dirname, 'public')));
 
 endpointsRouter.get('/enhanced_tuning/api/auth-check', (req, res) => {
     res.json({
@@ -147,6 +157,19 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
             </div>
         `;
     };
+    
+    const createSliderRow = (id, title, desc, min, max, step, value) => `
+        <div class="setting-row">
+            <div class="setting-info">
+                <div class="setting-title">${title}</div>
+                <div class="setting-desc">${desc}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}" style="cursor: pointer;">
+                <span id="${id}_display" style="color:var(--accent); font-weight:bold; width: 35px; text-align:right;">${value}</span>
+            </div>
+        </div>
+    `;
 
     const html = `
     <!DOCTYPE html>
@@ -185,7 +208,6 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
             .threshold-card { background: var(--row-bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
             .threshold-card span { font-weight: bold; color: var(--accent); }
             .threshold-card input { width: 80px; text-align: center; }
-            .save-bar { position: absolute; bottom: 40px; right: 40px; }
             .btn-save { background-color: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: background 0.2s; }
             .btn-save:hover { background-color: var(--accent-hover); }
             #toast { visibility: hidden; min-width: 250px; background-color: #27ae60; color: #fff; text-align: center; border-radius: 6px; padding: 16px; position: fixed; z-index: 1000; bottom: 40px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold; opacity: 0; transition: opacity 0.3s; }
@@ -198,17 +220,14 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
             <button class="nav-btn active" data-target="tab-ui">1. General UI & Layout</button>
             <button class="nav-btn" data-target="tab-hardware">2. Tuning & Hardware</button>
             <button class="nav-btn" data-target="tab-limits">3. Band Limits</button>
-            <button class="nav-btn" data-target="tab-scanner">4. Scanner Integration</button>
+            <button class="nav-btn" data-target="tab-plugins">4. Plugin Integration</button>
             
-            <!-- Her er den nye plasseringen til Save-knappen -->
             <div style="margin-top: auto; padding: 20px; border-top: 1px solid var(--border);">
                 <button class="btn-save" id="saveBtn" style="width: 100%;">Save Settings</button>
             </div>
         </div>
 
         <div class="main-content">
-            <!-- TAB 1, 2 og 3 forblir som de var, legg dem inn her ... -->
-            
             <div id="tab-ui" class="tab-content active">
                 <h2>General UI & Layout</h2>
                 ${createSelectRow('LAYOUT_STYLE', 'Visual Layout Style', 'Choose the layout design for the plugin controls.', [{val: 'modern', label:'Modern (Side Panel)'}, {val:'classic', label:'Classic (Compact)'}], pluginConfig.LAYOUT_STYLE)}
@@ -229,10 +248,7 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
             <div id="tab-hardware" class="tab-content">
                 <h2>Tuning & Hardware Options</h2>
                 ${createSelectRow('TUNING_STANDARD', 'Regional Tuning Standard', 'Controls AM/FM steps and ranges.', [{val:'international', label:'International'}, {val:'americas', label:'Americas'}, {val:'japan', label:'Japan'}], pluginConfig.TUNING_STANDARD)}
-                ${createToggleRow('ENABLE_MW_STEP_TOGGLE', 'MW 9/10kHz Toggle Button', 'Shows a button when in MW to switch step size.', pluginConfig.ENABLE_MW_STEP_TOGGLE)}
-                ${createToggleRow('ENABLE_FREQUENCY_MEMORY', 'Frequency Memory', 'Remember last tuned frequency per band.', pluginConfig.ENABLE_FREQUENCY_MEMORY)}
-                ${createToggleRow('ENABLE_SMART_KHZ_INPUT', 'Smart kHz Input', 'Type e.g. "693" instead of "0.693". Auto-converts numbers ≥130 to MHz to avoid plugin conflicts.', pluginConfig.ENABLE_SMART_KHZ_INPUT)}
-                
+                ${createToggleRow('ENABLE_SMART_KHZ_INPUT', 'Smart kHz Input', 'Type e.g. "693" instead of "0.693". Auto-converts numbers on AM bands to avoid plugin conflicts.', pluginConfig.ENABLE_SMART_KHZ_INPUT)}
                 ${createToggleRow('ENABLE_MW_STEP_TOGGLE', 'MW 9/10kHz Toggle Button', 'Shows a button when in MW to switch step size.', pluginConfig.ENABLE_MW_STEP_TOGGLE)}
                 ${createToggleRow('ENABLE_FREQUENCY_MEMORY', 'Frequency Memory', 'Remember last tuned frequency per band.', pluginConfig.ENABLE_FREQUENCY_MEMORY)}
                 
@@ -246,50 +262,27 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
             <div id="tab-limits" class="tab-content">
                 <h2>Tuning Limits & Bands Configuration</h2>
                 
-                <!-- Global Limits -->
-                ${createToggleRow('overrideServerTuningLimit', 'Override Server Limits', 'Allow plugin to manage its own separate hardware limits for AM and FM.', pluginConfig.overrideServerTuningLimit)}
-                
-                <div class="setting-row">
-                    <div class="setting-info"><div class="setting-title">FM Band Limits (MHz)</div></div>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <span style="color:var(--subtext); font-size:12px;">Low</span>
-                        <input type="number" id="fmLower" value="${pluginConfig.fmLower}" step="0.1" class="dark-input" style="width:70px; min-width:auto; text-align:center;">
-                        <span style="color:var(--subtext); font-size:12px;">High</span>
-                        <input type="number" id="fmUpper" value="${pluginConfig.fmUpper}" step="0.1" class="dark-input" style="width:70px; min-width:auto; text-align:center;">
-                    </div>
-                </div>
+                ${createToggleRow('overrideServerTuningLimit', 'Override Server Limits', 'Allow plugin to manage its own separate hardware limits for AM and FM. Set the actual values in the core "Webserver -> Tuning Options" panel.', pluginConfig.overrideServerTuningLimit)}
 
-                <div class="setting-row">
-                    <div class="setting-info"><div class="setting-title">AM Band Limits (MHz)</div></div>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <span style="color:var(--subtext); font-size:12px;">Low</span>
-                        <input type="number" id="amLower" value="${pluginConfig.amLower}" step="0.001" class="dark-input" style="width:70px; min-width:auto; text-align:center;">
-                        <span style="color:var(--subtext); font-size:12px;">High</span>
-                        <input type="number" id="amUpper" value="${pluginConfig.amUpper}" step="0.1" class="dark-input" style="width:70px; min-width:auto; text-align:center;">
-                    </div>
-                </div>
-
-                <!-- Main Bands -->
                 <h3 style="margin-top:30px; color:#aaa; font-size:16px;">Main Bands Configuration</h3>
-                <p style="color:var(--subtext); font-size:13px; margin-bottom:15px;">Rename bands (e.g., OIRT to eFM), set default start frequency, and adjust limits.</p>
-                
-                ${['AM_SUPER', 'FM', 'OIRT', 'SW', 'MW', 'LW'].map(key => `
-                    <div class="setting-row" style="padding: 10px 20px;">
-                        <div class="setting-info"><div class="setting-title" style="font-size:14px;">${key}</div></div>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <span style="color:var(--subtext); font-size:11px;">Name</span>
-                            <input type="text" id="name_${key}" value="${pluginConfig.customMainBands[key].name}" class="dark-input" style="width:70px; min-width:auto; padding:6px 10px;">
-                            <span style="color:var(--subtext); font-size:11px;">Default Tune</span>
-                            <input type="number" id="tune_${key}" value="${pluginConfig.customMainBands[key].tune}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
-                            <span style="color:var(--subtext); font-size:11px;">Low</span>
-                            <input type="number" id="start_${key}" value="${pluginConfig.customMainBands[key].start}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
-                            <span style="color:var(--subtext); font-size:11px;">High</span>
-                            <input type="number" id="end_${key}" value="${pluginConfig.customMainBands[key].end}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
-                        </div>
-                    </div>
-                `).join('')}
+<p style="color:var(--subtext); font-size:13px; margin-bottom:15px;">Rename bands (max 5 chars to fit buttons), set default start frequency, and adjust limits.</p>
 
-                <!-- SW Sub Bands -->
+${['AM_SUPER', 'FM', 'OIRT', 'SW', 'MW', 'LW'].map(key => `
+    <div class="setting-row" style="padding: 10px 20px;">
+        <div class="setting-info"><div class="setting-title" style="font-size:14px;">${key}</div></div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <span style="color:var(--subtext); font-size:11px;">Name</span>
+            <input type="text" id="name_${key}" maxlength="5" value="${pluginConfig.customMainBands[key].name}" class="dark-input" style="width:70px; min-width:auto; padding:6px 10px; text-align:center;">
+            <span style="color:var(--subtext); font-size:11px;">Default Tune</span>
+            <input type="number" id="tune_${key}" value="${pluginConfig.customMainBands[key].tune}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
+            <span style="color:var(--subtext); font-size:11px;">Low</span>
+            <input type="number" id="start_${key}" value="${pluginConfig.customMainBands[key].start}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
+            <span style="color:var(--subtext); font-size:11px;">High</span>
+            <input type="number" id="end_${key}" value="${pluginConfig.customMainBands[key].end}" step="0.001" class="dark-input" style="width:65px; min-width:auto; padding:6px 10px;">
+        </div>
+    </div>
+`).join('')}
+
                 <h3 style="margin-top:30px; color:#aaa; font-size:16px;">Shortwave Sub-Bands</h3>
                 <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                     ${Object.keys(pluginConfig.customSwBands).map(key => `
@@ -308,23 +301,46 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                 </div>
             </div>
 
-            <!-- Den nye Tab 4 -->
-            <div id="tab-scanner" class="tab-content">
-                <h2>Scanner Integration</h2>
-                ${createToggleRow('ENABLE_AM_SCANNER', 'Enable Custom AM/SW Scanner', 'Intercepts the Highpoint scanner to work below 30 MHz.', pluginConfig.ENABLE_AM_SCANNER)}
+            <!-- Den nye Tab 4: Plugin Integration -->
+            <div id="tab-plugins" class="tab-content">
+                <h2>Plugin Integration</h2>
                 
-                <h3 style="margin-top:30px; color:#aaa; font-size:16px;">AM / SW Band Thresholds</h3>
-                <p style="color:var(--subtext); margin-bottom: 20px;">Define the minimum signal strength (0-100) required to pause the scanner on a specific band.</p>
-                <div class="threshold-grid">
-                    ${['LW', 'MW', '160m', '120m', '90m', '75m', '60m', '49m', '41m', '31m', '25m', '22m', '19m', '16m', '15m', '13m', '11m'].map(t => `
-                        <div class="threshold-card">
-                            <span>${t} Band</span>
-                            <input type="number" id="thr_${t}" value="${pluginConfig['thr_'+t]}" class="dark-input">
-                        </div>
-                    `).join('')}
+                <h3 style="margin-top:20px; color:#aaa; font-size:16px;">Highpoint Scanner Integration</h3>
+                ${createToggleRow('ENABLE_AM_SCANNER', 'Enable Scanner plugin override', 'Intercepts the Highpoint scanner to respect AM/SW band limits and sub-bands.', pluginConfig.ENABLE_AM_SCANNER)}
+                
+                <div id="scanner-thresholds-block" style="display: ${pluginConfig.ENABLE_AM_SCANNER ? 'block' : 'none'}; border-left: 2px solid #3498db; padding-left: 15px; margin-bottom: 30px; margin-top: 15px;">
+                    <p style="color:var(--subtext); margin-bottom: 15px; font-size: 13px;">Define the minimum signal strength (0-100) required to pause the scanner on a specific AM/SW band.</p>
+                    <div class="threshold-grid">
+                        ${['LW', 'MW', '160m', '120m', '90m', '75m', '60m', '49m', '41m', '31m', '25m', '22m', '19m', '16m', '15m', '13m', '11m'].map(t => `
+                            <div class="threshold-card" style="padding: 10px;">
+                                <span>${t} Band</span>
+                                <input type="number" id="thr_${t}" value="${pluginConfig['thr_'+t]}" class="dark-input" style="width:60px;">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <h3 style="margin-top:40px; color:#aaa; font-size:16px;">Highpoint Retro Design Elements Plugin</h3>
+                ${createToggleRow('ENABLE_ANALOG_SCALE', 'Enable Analog Scale Integration', 'Injects a dynamic retro analog scale for all bands.', pluginConfig.ENABLE_ANALOG_SCALE)}
+                
+                <div id="scale-settings-block" style="display: ${pluginConfig.ENABLE_ANALOG_SCALE ? 'block' : 'none'}; border-left: 2px solid #3498db; padding-left: 15px; margin-bottom: 30px; margin-top: 15px;">
+                    ${createToggleRow('ANALOG_SCALE_AUTOSTART', 'Autostart Scale', 'Automatically open the scale when tuning to a supported band.', pluginConfig.ANALOG_SCALE_AUTOSTART)}
+                    ${createToggleRow('SHOW_TUNING_KNOB', 'Show Tuning Knob', 'Displays the dual rotary encoder for manual tuning.', pluginConfig.SHOW_TUNING_KNOB)}
+                    ${createSliderRow('ANALOG_SCALE_BRIGHTNESS', 'Scale Brightness', 'Adjust the backlight brightness of the analog scale.', '0.2', '2.0', '0.05', pluginConfig.ANALOG_SCALE_BRIGHTNESS)}
+                    
+                    <h4 style="margin-top:20px; color:#aaa; font-size:14px; margin-bottom:10px;">VU Meter Configuration</h4>
+                    ${createToggleRow('ENABLE_VU_METER', 'Enable VU Meter', 'Displays a stereo VU meter next to the analog scale.', pluginConfig.ENABLE_VU_METER)}
+                    ${createSelectRow('VU_METER_MODE', 'VU Meter Mode', 'RMS gives smooth realistic pumping. Peak shows raw loudness.',[{val: 'RMS', label: 'RMS (Smooth & Realistic)'}, {val: 'Peak', label: 'Peak (Raw Max Levels)'}], pluginConfig.VU_METER_MODE)}
+                    ${createSliderRow('VU_METER_GAIN_FM', 'VU Meter Gain (FM)', 'Calibration multiplier for the VU meter on FM/OIRT.', '0.1', '5.0', '0.1', pluginConfig.VU_METER_GAIN_FM)}
+                    ${createSliderRow('VU_METER_GAIN_AM', 'VU Meter Gain (AM/SW)', 'Calibration multiplier for the VU meter on AM/SW/MW/LW.', '0.1', '5.0', '0.1', pluginConfig.VU_METER_GAIN_AM)}
+                    <h4 style="margin-top:20px; color:#aaa; font-size:14px; margin-bottom:10px;">Retro Magic Eye</h4>
+                    ${createToggleRow('ENABLE_MAGIC_EYE', 'Enable Magic Eye Indicator', 'Converts the signal panel into a glowing vacuum tube indicator.', pluginConfig.ENABLE_MAGIC_EYE)}
+                    <h4 style="margin-top:20px; color:#aaa; font-size:14px; margin-bottom:10px;">Scale Overlays & Data</h4>
+                   ${createToggleRow('ENABLE_PS_SCALE', 'Show FM PS Stations', 'Display RDS PS names directly on the analog FM scale.', pluginConfig.ENABLE_PS_SCALE !== false)}
+                    ${createToggleRow('ENABLE_SPECTRUM_OVERLAY', 'Show Spectrum Overlay', 'Project the SDR spectrum waterfall onto the analog dial glass.', pluginConfig.ENABLE_SPECTRUM_OVERLAY !== false)}
+                    ${createToggleRow('ENABLE_SW_STATIONS_SCALE', 'Show SW Stations', 'Display active shortwave stations dynamically on the analog dial.<br><span style="color:#e74c3c; font-weight:bold; font-size:12px;">⚠️ Requires AM Station Info Plugin V1.4 or newer!</span>', pluginConfig.ENABLE_SW_STATIONS_SCALE !== false)}
                 </div>
             </div>
-        </div>
 
         <div id="toast">Settings Saved Successfully!</div>
 
@@ -338,6 +354,23 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                     tabs.forEach(t => t.classList.remove('active'));
                     btn.classList.add('active');
                     document.getElementById(btn.dataset.target).classList.add('active');
+                });
+            });
+
+            // Dynamisk visning av Scanner Thresholds
+            document.getElementById('ENABLE_AM_SCANNER').addEventListener('change', function() {
+                document.getElementById('scanner-thresholds-block').style.display = this.checked ? 'block' : 'none';
+            });
+
+            document.getElementById('ENABLE_ANALOG_SCALE').addEventListener('change', function() {
+                document.getElementById('scale-settings-block').style.display = this.checked ? 'block' : 'none';
+            });
+
+            // Oppdater teksten vedsidenav sliderne i sanntid
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                slider.addEventListener('input', (e) => {
+                    const display = document.getElementById(e.target.id + '_display');
+                    if (display) display.innerText = e.target.value;
                 });
             });
 
@@ -359,48 +392,55 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                     ENABLED_BANDS: bands,
                     
                     TUNING_STANDARD: document.getElementById('TUNING_STANDARD').value,
+                    ENABLE_SMART_KHZ_INPUT: document.getElementById('ENABLE_SMART_KHZ_INPUT').checked,
                     ENABLE_MW_STEP_TOGGLE: document.getElementById('ENABLE_MW_STEP_TOGGLE').checked,
                     ENABLE_FREQUENCY_MEMORY: document.getElementById('ENABLE_FREQUENCY_MEMORY').checked,
-                    ENABLE_SMART_KHZ_INPUT: document.getElementById('ENABLE_SMART_KHZ_INPUT').checked,
                     ENABLE_AM_BW: document.getElementById('ENABLE_AM_BW').checked,
                     FIRMWARE_TYPE: document.getElementById('FIRMWARE_TYPE').value,
                     ENABLE_DEFAULT_AM_BW: document.getElementById('ENABLE_DEFAULT_AM_BW').checked,
                     DEFAULT_AM_BW_VALUE: document.getElementById('DEFAULT_AM_BW_VALUE').value,
 
                     overrideServerTuningLimit: document.getElementById('overrideServerTuningLimit').checked,
-                    fmLower: parseFloat(document.getElementById('fmLower').value),
-                    fmUpper: parseFloat(document.getElementById('fmUpper').value),
-                    amLower: parseFloat(document.getElementById('amLower').value),
-                    amUpper: parseFloat(document.getElementById('amUpper').value),
+                    
                     ENABLE_AM_SCANNER: document.getElementById('ENABLE_AM_SCANNER').checked,
+                    ENABLE_ANALOG_SCALE: document.getElementById('ENABLE_ANALOG_SCALE').checked,
+                    ANALOG_SCALE_AUTOSTART: document.getElementById('ANALOG_SCALE_AUTOSTART').checked,
+                    SHOW_TUNING_KNOB: document.getElementById('SHOW_TUNING_KNOB').checked,
+                    ANALOG_SCALE_BRIGHTNESS: parseFloat(document.getElementById('ANALOG_SCALE_BRIGHTNESS').value),
+                    ENABLE_VU_METER: document.getElementById('ENABLE_VU_METER').checked,
+                    VU_METER_MODE: document.getElementById('VU_METER_MODE').value,
+                    VU_METER_GAIN_FM: parseFloat(document.getElementById('VU_METER_GAIN_FM').value),
+                    VU_METER_GAIN_AM: parseFloat(document.getElementById('VU_METER_GAIN_AM').value),
+                    ENABLE_MAGIC_EYE: document.getElementById('ENABLE_MAGIC_EYE').checked,
+                    ENABLE_PS_SCALE: document.getElementById('ENABLE_PS_SCALE').checked,
+                    ENABLE_SPECTRUM_OVERLAY: document.getElementById('ENABLE_SPECTRUM_OVERLAY').checked,
+                    ENABLE_SW_STATIONS_SCALE: document.getElementById('ENABLE_SW_STATIONS_SCALE').checked
                 };
 
-                const thresholds = ['LW', 'MW', '160m', '120m', '90m', '75m', '60m', '49m', '41m', '31m', '25m', '22m', '19m', '16m', '15m', '13m', '11m'];
-                thresholds.forEach(t => {
-                    config['thr_' + t] = parseInt(document.getElementById('thr_' + t).value);
-                });
-
-                // Skrap Main Bands
                 const mainKeys = ['AM_SUPER', 'FM', 'OIRT', 'SW', 'MW', 'LW'];
                 config.customMainBands = {};
                 mainKeys.forEach(k => {
                     config.customMainBands[k] = {
                         name: document.getElementById('name_' + k).value,
-                        tune: parseFloat(document.getElementById('tune_' + k).value), // NY!
+                        tune: parseFloat(document.getElementById('tune_' + k).value),
                         start: parseFloat(document.getElementById('start_' + k).value),
                         end: parseFloat(document.getElementById('end_' + k).value)
                     };
                 });
 
-                // Skrap SW Bands
                 const swKeys = ['160m', '120m', '90m', '75m', '60m', '49m', '41m', '31m', '25m', '22m', '19m', '16m', '15m', '13m', '11m'];
                 config.customSwBands = {};
                 swKeys.forEach(k => {
                     config.customSwBands[k] = {
-                        tune: parseFloat(document.getElementById('sw_tune_' + k).value), // NY!
+                        tune: parseFloat(document.getElementById('sw_tune_' + k).value),
                         start: parseFloat(document.getElementById('sw_start_' + k).value),
                         end: parseFloat(document.getElementById('sw_end_' + k).value)
                     };
+                });
+
+                const thresholds = ['LW', 'MW', '160m', '120m', '90m', '75m', '60m', '49m', '41m', '31m', '25m', '22m', '19m', '16m', '15m', '13m', '11m'];
+                thresholds.forEach(t => {
+                    config['thr_' + t] = parseInt(document.getElementById('thr_' + t).value);
                 });
 
                 try {
@@ -413,20 +453,16 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                     const toast = document.getElementById('toast');
                     
                     if (res.ok) {
-                        // Alt gikk bra - Grønn melding
                         toast.innerText = 'Settings Saved Successfully!';
                         toast.style.backgroundColor = '#27ae60';
                         toast.classList.add('show');
                         setTimeout(() => toast.classList.remove('show'), 3000);
                     } else if (res.status === 401) {
-                        // 401 Unauthorized - Sesjonen har utløpt (server restart)
                         alert('Session expired! You are no longer logged in as Admin. Please go back to the main page, log in again, and refresh this panel.');
                     } else {
-                        // Andre server-feil
                         throw new Error('Server returned ' + res.status);
                     }
                 } catch(err) {
-                    // Nettverksfeil eller feil kastet over - Rød melding
                     const toast = document.getElementById('toast');
                     toast.innerText = 'Error saving settings!';
                     toast.style.backgroundColor = '#e74c3c';
