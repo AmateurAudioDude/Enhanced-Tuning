@@ -1905,6 +1905,9 @@
 
               if (isValidPS) {
                   if (deleteTimer) { clearTimeout(deleteTimer); deleteTimer = null; activeDeleteFreq = null; }
+                      if (Date.now() - freqSettledTime < 800) {
+                          return; 
+                      }
 
                   let shouldSave = true;
                   for (let key in db) {
