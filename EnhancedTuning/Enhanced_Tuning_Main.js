@@ -1,6 +1,6 @@
-// Enhanced Tuning V3.1 – Analog Scale Integration, AM Scanner, Full Admin UI
+// Enhanced Tuning V3.1.1 – Analog Scale Integration, AM Scanner, Full Admin UI
 // -------------------------------------------------------------------------------------
-// Retro Design Elements Plugin Integration, Big thanks to Highpoint for this.
+
 /* global document, socket, window, WebSocket, Event, addIconToPluginPanel */
 (() => {
   let pluginConfig = {
@@ -242,6 +242,20 @@
           }
       },
 
+      async fetchMwLwFavorites() {
+          try {
+              const res = await fetch('/AM-Station_info/favorites');
+              if (res.ok) {
+                  this.mwLwFavorites = await res.json();
+                  if (this.isVisible && this.scaleCanvas) {
+                      this.drawScale(this.scaleCanvas, this.animFreq !== null ? this.animFreq : this.currentFreq);
+                  }
+              }
+          } catch (e) {
+              console.warn("[Enhanced Tuning] Error fetching MW/LW favorites:", e);
+          }
+      },
+
       applyScaleLayout() {
           if (!this.wrap) return;
           const scaleDiv = document.getElementById("et-analog-scale-container");
@@ -419,13 +433,22 @@
           this.addButton();
 
           const isSwSubband = this.currentKey && (this.currentKey in pluginConfig.customSwBands || this.currentKey.endsWith('m'));
-          if (isSwSubband) {
-              if (this.isSwScaleEnabled() && this.lastFetchedSwBand !== this.currentKey) {
+          const isMwLw = this.currentKey === 'MW' || this.currentKey === 'LW';
+
+          if (isSwSubband && this.isSwScaleEnabled()) {
+              if (this.lastFetchedSwBand !== this.currentKey) {
                   this.fetchSwStations(bandData.start, bandData.end);
                   this.lastFetchedSwBand = this.currentKey;
               }
+          } else if (isMwLw && this.isSwScaleEnabled()) {
+              // FIX: Sjekk at vi ikke allerede har lastet dem!
+              if (this.lastFetchedSwBand !== this.currentKey) {
+                  this.fetchMwLwFavorites();
+                  this.lastFetchedSwBand = this.currentKey;
+              }
           } else {
-              this.swStations =[];
+              this.swStations = [];
+              this.mwLwFavorites =[];
               this.lastFetchedSwBand = null;
           }
           
@@ -676,8 +699,9 @@
               
               for (let st of this.renderedStations) {
                   if (x >= st.left && x <= st.right && y >= st.top && y <= st.bottom) {
-                      safeTuneToFrequency(st.f);
-                      this.currentFreq = st.f; this.animFreq = st.f; this.dragFreq = st.f;
+                      let targetFreq = this.currentUnit === 'kHz' ? st.f / 1000 : st.f;
+                      safeTuneToFrequency(targetFreq);
+                      this.currentFreq = targetFreq; this.animFreq = targetFreq; this.dragFreq = targetFreq;
                       return; 
                   }
               }
@@ -1206,7 +1230,8 @@
           const isFmSpectrum = (this.currentKey === 'FM' || this.currentKey === 'OIRT');
           const psMode = isFmSpectrum && this.isPsEnabled();
           const swMode = !isFmSpectrum && this.currentKey.endsWith('m') && this.isSwScaleEnabled();
-          const showStationsOnScale = psMode || swMode;
+          const mwLwMode = !isFmSpectrum && (this.currentKey === 'MW' || this.currentKey === 'LW') && this.isSwScaleEnabled();
+          const showStationsOnScale = psMode || swMode || mwLwMode;
 
           const tX = paperX + paperW * 0.04, tW = paperW * 0.92;
           const baseY = showStationsOnScale ? paperY + paperH * 0.35 : paperY + paperH * 0.85;
@@ -1315,17 +1340,43 @@
                           visibleStations.push({ freq: stFreq, name: stationDB[fStr].ps, x: fX(stFreq), data: stationDB[fStr], isSw: false });
                       }
                   }
-              } else if (swMode) {
-                  (this.swStations ||[]).forEach(st => {
-                      let stFreq = st.frequency / 1000;
-                      if (stFreq >= dMin - 0.05 && stFreq <= dMax + 0.05) {
-                          let shortName = st.name.replace(/(Radio|Broadcasting|Corporation|Voice of|International)/ig, '').trim();
-                          if (shortName.startsWith('-') || shortName.startsWith(',')) shortName = shortName.substring(1).trim();
-                          if (shortName.length > 10) shortName = shortName.substring(0, 9) + '..';
-                          if (shortName === '') shortName = st.name.substring(0, 10);
-                          visibleStations.push({ freq: stFreq, name: shortName, x: fX(stFreq), data: st, isSw: true });
+              } else if (swMode || mwLwMode) {
+                  let activeList;
+                  if (swMode) {
+                      activeList = this.swStations;
+                  } else {
+                      activeList = this.mwLwFavorites;
+                  }
+                  
+                  if (activeList !== null && activeList !== undefined) {
+                      for (let i = 0; i < activeList.length; i++) {
+                          let st = activeList[i];
+                          let stFreq;
+                          
+                          // SW bruker MHz (må deles på 1000), MW/LW bruker kHz direkte
+                          if (mwLwMode) {
+                              stFreq = st.frequency;
+                          } else {
+                              stFreq = st.frequency / 1000;
+                          }
+                          
+                          if (stFreq >= dMin - 0.05 && stFreq <= dMax + 0.05) {
+                              let shortName = st.name.replace(/(Radio|Broadcasting|Corporation|Voice of|International)/ig, '').trim();
+                              
+                              if (shortName.startsWith('-') || shortName.startsWith(',')) {
+                                  shortName = shortName.substring(1).trim();
+                              }
+                              if (shortName.length > 10) {
+                                  shortName = shortName.substring(0, 9) + '..';
+                              }
+                              if (shortName === '') {
+                                  shortName = st.name.substring(0, 10);
+                              }
+                              
+                              visibleStations.push({ freq: stFreq, name: shortName, x: fX(stFreq), data: st, isSw: true });
+                          }
                       }
-                  });
+                  }
               }
               
               visibleStations.sort((a,b) => a.x - b.x);
@@ -1344,10 +1395,10 @@
               let rowRightEdges =[];
               let maxRow = 0;
               
-              const hoverThreshold = isFmSpectrum ? 0.04 : 0.003;
+              const hoverThreshold = isFmSpectrum ? 0.04 : (this.currentUnit === 'kHz' ? 3 : 0.003);
               
               visibleStations.forEach((st, index) => {
-                  const isHovered = (this.hoveredFreq === st.freq) || (Math.abs(freq - st.freq) <= hoverThreshold);
+                  const isHovered = (this.hoveredFreq === st.freq) || (Math.abs(dFreq - st.freq) <= hoverThreshold);
                   const isActive = st.isSw ? true : (st.data.active !== false);
 
                   ctx.font = `${stFontSize}px "Arial Narrow", Arial, sans-serif`;
@@ -1400,7 +1451,8 @@
                       }
                       // ------------------------------------
                       
-                      ctx.fillText(st.name, targetX, y, ((1.0 / dRange) * tW * 0.90) * (isHovered ? hoverFactor : 1));
+                      const rangeScale = this.currentUnit === 'kHz' ? 1000.0 : 1.0;
+                        ctx.fillText(st.name, targetX, y, ((rangeScale / dRange) * tW * 0.90) * (isHovered ? hoverFactor : 1));
                       ctx.shadowBlur = 0;
 
                       this.renderedStations.push({ f: st.freq, left: targetX - baseBoxWidth/2 - 4, right: targetX + baseBoxWidth/2 + 4, top: y - stFontSize, bottom: y + stFontSize, data: st.data, isSw: st.isSw });
@@ -1905,6 +1957,7 @@
 
               if (isValidPS) {
                   if (deleteTimer) { clearTimeout(deleteTimer); deleteTimer = null; activeDeleteFreq = null; }
+                    
                       if (Date.now() - freqSettledTime < 800) {
                           return; 
                       }
@@ -1998,9 +2051,14 @@
                   const d = hovered.data;
                   const isSw = hovered.isSw;
                   const displayName = isSw ? d.name : (d.name || d.ps);
-                  const displayFreq = isSw ? hovered.f.toFixed(3) : hovered.f.toFixed(1);
+                  let freqStr = "";
+if (this.currentUnit === 'kHz') {
+    freqStr = `${Math.round(hovered.f)} kHz`;
+} else {
+    freqStr = `${hovered.f.toFixed(isSw ? 3 : 1)} MHz`;
+}
 
-                  let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:4px;">${displayName} <span style="color:#3abf9a; font-size:14px; margin-left:6px;">${displayFreq} MHz</span></div>`;
+let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:4px;">${displayName} <span style="color:#3abf9a; font-size:14px; margin-left:6px;">${freqStr}</span></div>`;
                   
                   let locStr = isSw ? (d.country ? `${d.location || ''}[${d.country}]` : d.location) : (d.city ? `${d.city} <span style="opacity:0.7">[${d.itu || '-'}]</span>` : '');
                   if (locStr) {
