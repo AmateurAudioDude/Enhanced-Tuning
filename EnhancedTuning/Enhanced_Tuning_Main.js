@@ -3432,7 +3432,8 @@ body.et-analog-active #mm-scope-flex {
                                 if (typeof socket !== 'undefined' && socket && socket.readyState === WebSocket.OPEN) {
                                     socket.send("T" + Math.round(targetMhz * 1000));
                                 }
-                                newInput.value = ''; newInput.blur();
+                                newInput.value = ''; 
+                                newInput.focus();
                             }
                         }
                     });
