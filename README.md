@@ -14,7 +14,11 @@ This update brings massive visual upgrades to your tuning experience, along with
  <li><strong>Some Bug Fixes</strong></li>
 </ul>
 
+---
+
 <p style="color: #e74c3c; font-weight: bold;">⚠️ IMPORTANT UPGRADE NOTE:</p>
+<li>If you use Analog Scale in this plugin, you must disable the <a href="https://github.com/Highpoint2000/RetroDesign" target="_blank">Retro Design Elements Plugin</a> plugin by Highpoint.</li>
+<br><br>
 <p>When installing this update, it is highly recommended that you delete the following old files from your installation folder to prevent conflicts with the new Admin Panel and UI logic:</p>
 <ul>
  <li><code>/EnhancedTuning/public/Enhanced_Tuning.css</code></li>
@@ -22,7 +26,7 @@ This update brings massive visual upgrades to your tuning experience, along with
 </ul>
 <br>
 
-
+---
 <br><br>
 What's new in v3.0 - The Ultimate Tuning Overhaul!
 This is the biggest update yet, completely rebuilding how the plugin operates and interacts with the server.
