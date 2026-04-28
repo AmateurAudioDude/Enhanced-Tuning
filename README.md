@@ -2,7 +2,9 @@
 
 <br>
 <img width="1346" height="705" alt="Skjermbilde fra 2026-04-27 20-49-49" src="https://github.com/user-attachments/assets/bef356b9-2297-496b-bab7-be970e6fed19" />
-
+<br><br>
+Update 3.1.1:
+You can now add stations to the scale panel manually on the MW and LW bands. This requires the latest version of the AM Station Info plugin V 1.4.1
 <br><br>
 <h3>What's new in v3.1 - The Retro & Shortwave Update!</h3>
 This update brings massive visual upgrades to your tuning experience, along with highly requested shortwave features and crucial under-the-hood fixes.
