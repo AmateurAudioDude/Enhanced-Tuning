@@ -2028,7 +2028,7 @@
           if (!tooltip) {
               tooltip = document.createElement('div');
               tooltip.id = 'retro-station-tooltip';
-              tooltip.style.cssText = `position:fixed; background:rgba(15,25,30,0.95); color:#eee; padding:10px 14px; border-radius:6px; border:1px solid rgba(80,160,180,0.3); font-family:Arial,sans-serif; font-size:13px; z-index:99999; pointer-events:none; display:none; box-shadow:0 4px 12px rgba(0,0,0,0.5); backdrop-filter:blur(4px); min-width:150px;`;
+              tooltip.style.cssText = `position:fixed; background:rgba(15,25,30,0.95); color:#eee; padding:10px 14px; border-radius:6px; border:1px solid rgba(80,160,180,0.3); font-family:Arial,sans-serif; font-size:13px; z-index:90000; pointer-events:none; display:none; box-shadow:0 4px 12px rgba(0,0,0,0.5); backdrop-filter:blur(4px); min-width:150px;`;
               document.body.appendChild(tooltip);
           }
 
