@@ -11,7 +11,7 @@ This update brings massive visual upgrades to your tuning experience, along with
 
 <ul>
  <li><strong>Analog Scale Integration:</strong> A massive thank you to <strong>Highpoint</strong> for providing a custom-tailored version of his brilliant <a href="https://github.com/Highpoint2000/RetroDesign" target="_blank">Retro Design Elements Plugin (v1.2)</a>! The beautiful analog dial and dual-rotary tuning knobs are now fully integrated directly into Enhanced Tuning, perfectly synced with our band-switching logic.</li>
- <li><strong>SW Station Names on the Dial:</strong> Shortwave tuning just got a lot easier! When tuning inside SW sub-bands (like 31m or 49m), active station names are now projected dynamically onto the analog dial glass. Distance calculations (km) in the tooltip are now automatically mapped to your server's exact QTH coordinates. <em>(Note: This feature requires the <a href="https://github.com/Overland-DX/AM-Station-Info)" target="_blank">AM Station Info Plugin</a> to be installed and active).</em></li>
+ <li><strong>SW Station Names on the Dial:</strong> Shortwave tuning just got a lot easier! When tuning inside SW sub-bands (like 31m or 49m), active station names are now projected dynamically onto the analog dial glass. Distance calculations (km) in the tooltip are now automatically mapped to your server's exact QTH coordinates. <em>(Note: This feature requires the <a href="https://github.com/Overland-DX/AM-Station-Info" target="_blank">AM Station Info Plugin</a> to be installed and active).</em></li>
 
  <li><strong>Some Bug Fixes</strong></li>
 </ul>
