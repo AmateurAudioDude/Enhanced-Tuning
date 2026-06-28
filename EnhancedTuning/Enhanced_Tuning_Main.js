@@ -9,6 +9,7 @@
       SHOW_LOOP_BUTTON: true,
       SHOW_BAND_RANGE: true,
       HIDE_DECIMAL_FOR_HF: false,
+      HIDE_DECIMAL_HF_THRESHOLD: 30,
       ENABLE_TUNE_STEP_FEATURE: true,
       TUNE_STEP_TIMEOUT_SECONDS: 20,
       ENABLED_BANDS: ['FM', 'OIRT', 'SW', 'MW', 'LW'],
@@ -3497,7 +3498,7 @@ body.et-analog-active #mm-scope-flex {
             if (!raw || raw.toLowerCase().includes('khz') || !raw.includes('.')) return;
             const value = parseFloat(raw);
             if (isNaN(value)) return;
-            const shouldHide = pluginConfig.HIDE_DECIMAL_FOR_HF && value < 30;
+            const shouldHide = pluginConfig.HIDE_DECIMAL_FOR_HF && value <= pluginConfig.HIDE_DECIMAL_HF_THRESHOLD;
             const shouldDimZero = shouldHide && value < 1 && raw.charAt(0) === '0' && raw.charAt(1) === '.';
             const dotIndex = raw.indexOf('.');
 
