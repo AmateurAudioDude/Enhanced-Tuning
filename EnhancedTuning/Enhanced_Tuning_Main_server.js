@@ -23,6 +23,7 @@ let pluginConfig = {
     HIDE_ALL_BUTTONS: false,
     SHOW_LOOP_BUTTON: true,
     SHOW_BAND_RANGE: true,
+    HIDE_DECIMAL_FOR_HF: false,
     ENABLE_TUNE_STEP_FEATURE: true,
     TUNE_STEP_TIMEOUT_SECONDS: 20,
     ENABLED_BANDS: ['FM', 'OIRT', 'SW', 'MW', 'LW'],
@@ -234,6 +235,7 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                 ${createToggleRow('HIDE_ALL_BUTTONS', 'Hide All Buttons', 'Hides new UI elements. Only effective if Layout is Modern.', pluginConfig.HIDE_ALL_BUTTONS)}
                 ${createToggleRow('SHOW_LOOP_BUTTON', 'Show Band Loop Button', 'Enable or disable the frequency loop feature entirely.', pluginConfig.SHOW_LOOP_BUTTON)}
                 ${createToggleRow('SHOW_BAND_RANGE', 'Show Band Range', 'Show the start ↔ end frequency text under the main display.', pluginConfig.SHOW_BAND_RANGE)}
+                ${createToggleRow('HIDE_DECIMAL_FOR_HF', 'Hide Decimal Point For HF Band', 'For AM/LW/MW/SW frequencies, hide the decimal point in the main frequency display.', pluginConfig.HIDE_DECIMAL_FOR_HF)}
                 ${createToggleRow('ENABLE_TUNE_STEP_FEATURE', 'Tune Step Feature', 'Click frequency display to change tuning steps.', pluginConfig.ENABLE_TUNE_STEP_FEATURE)}
                 ${createInputRow('TUNE_STEP_TIMEOUT_SECONDS', 'Tune Step Timeout', 'Seconds of inactivity before step resets (0 to disable).', pluginConfig.TUNE_STEP_TIMEOUT_SECONDS, 'number')}
                 
@@ -387,6 +389,7 @@ ${['AM_SUPER', 'FM', 'OIRT', 'SW', 'MW', 'LW'].map(key => `
                     HIDE_ALL_BUTTONS: document.getElementById('HIDE_ALL_BUTTONS').checked,
                     SHOW_LOOP_BUTTON: document.getElementById('SHOW_LOOP_BUTTON').checked,
                     SHOW_BAND_RANGE: document.getElementById('SHOW_BAND_RANGE').checked,
+                    HIDE_DECIMAL_FOR_HF: document.getElementById('HIDE_DECIMAL_FOR_HF').checked,
                     ENABLE_TUNE_STEP_FEATURE: document.getElementById('ENABLE_TUNE_STEP_FEATURE').checked,
                     TUNE_STEP_TIMEOUT_SECONDS: parseInt(document.getElementById('TUNE_STEP_TIMEOUT_SECONDS').value),
                     ENABLED_BANDS: bands,

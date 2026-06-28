@@ -8,6 +8,7 @@
       HIDE_ALL_BUTTONS: false,
       SHOW_LOOP_BUTTON: true,
       SHOW_BAND_RANGE: true,
+      HIDE_DECIMAL_FOR_HF: false,
       ENABLE_TUNE_STEP_FEATURE: true,
       TUNE_STEP_TIMEOUT_SECONDS: 20,
       ENABLED_BANDS: ['FM', 'OIRT', 'SW', 'MW', 'LW'],
@@ -2617,6 +2618,12 @@ body.tune-step-enabled .freq-digit-marker {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+.et-dimmed-zero {
+    opacity: 0.1;
+}
+.et-dimmed-zero.freq-digit-marker {
+    opacity: 0.9;
+}
 
 /* A2: Styles for disabled bands (Tune Limit) */
 .disabled-band {
@@ -3472,6 +3479,86 @@ body.et-analog-active #mm-scope-flex {
         };
 
         // =========================================================================
+        // HIDE DECIMAL POINT FOR HF BAND, AND DIM LEADING ZERO BELOW 1 MHz
+        // =========================================================================
+        const findFreqCharNode = (targetIndex) => {
+            let pos = 0, child = dataFrequencyElement.firstChild;
+            while (child) {
+                const len = child.textContent.length;
+                if (targetIndex >= pos && targetIndex < pos + len) return { node: child, pos, len };
+                pos += len;
+                child = child.nextSibling;
+            }
+            return null;
+        };
+
+        const applyFreqDecimalHiding = () => {
+            const raw = dataFrequencyElement.textContent;
+            if (!raw || raw.toLowerCase().includes('khz') || !raw.includes('.')) return;
+            const value = parseFloat(raw);
+            if (isNaN(value)) return;
+            const shouldHide = pluginConfig.HIDE_DECIMAL_FOR_HF && value < 30;
+            const shouldDimZero = shouldHide && value < 1 && raw.charAt(0) === '0' && raw.charAt(1) === '.';
+            const dotIndex = raw.indexOf('.');
+
+            const dotInfo = findFreqCharNode(dotIndex);
+            if (dotInfo) {
+                const { node: child, pos, len } = dotInfo;
+                if (child.nodeType === Node.TEXT_NODE) {
+                    if (shouldHide) {
+                        const text = child.textContent;
+                        const localIdx = dotIndex - pos;
+                        const frag = document.createDocumentFragment();
+                        if (localIdx > 0) frag.appendChild(document.createTextNode(text.slice(0, localIdx)));
+                        const span = document.createElement('span');
+                        span.className = 'et-hidden-dot';
+                        span.dataset.etHiddenByDecimal = '1';
+                        span.style.display = 'none';
+                        span.textContent = '.';
+                        frag.appendChild(span);
+                        if (localIdx + 1 < text.length) frag.appendChild(document.createTextNode(text.slice(localIdx + 1)));
+                        dataFrequencyElement.replaceChild(frag, child);
+                    }
+                } else if (child.nodeType === Node.ELEMENT_NODE && len === 1) {
+                    if (shouldHide && child.style.display !== 'none') {
+                        child.dataset.etHiddenByDecimal = '1';
+                        child.style.display = 'none';
+                    } else if (!shouldHide && child.dataset.etHiddenByDecimal === '1') {
+                        child.style.display = '';
+                        delete child.dataset.etHiddenByDecimal;
+                    }
+                }
+            }
+
+            const zeroInfo = findFreqCharNode(0);
+            if (zeroInfo) {
+                const { node: child, len } = zeroInfo;
+                if (child.nodeType === Node.TEXT_NODE) {
+                    if (shouldDimZero) {
+                        const text = child.textContent;
+                        const frag = document.createDocumentFragment();
+                        const span = document.createElement('span');
+                        span.className = 'et-dimmed-zero';
+                        span.textContent = text.charAt(0);
+                        frag.appendChild(span);
+                        if (text.length > 1) frag.appendChild(document.createTextNode(text.slice(1)));
+                        dataFrequencyElement.replaceChild(frag, child);
+                    }
+                } else if (child.nodeType === Node.ELEMENT_NODE && len === 1) {
+                    if (shouldDimZero && !child.classList.contains('et-dimmed-zero')) {
+                        child.classList.add('et-dimmed-zero');
+                    } else if (!shouldDimZero && child.classList.contains('et-dimmed-zero')) {
+                        child.classList.remove('et-dimmed-zero');
+                    }
+                }
+            }
+        };
+
+        const freqDecimalObserver = new MutationObserver(applyFreqDecimalHiding);
+        freqDecimalObserver.observe(dataFrequencyElement, { childList: true, characterData: true, subtree: true });
+        applyFreqDecimalHiding();
+
+        // =========================================================================
         // SMART kHZ INPUT INTERCEPTOR 
         // =========================================================================
         if (pluginConfig.ENABLE_SMART_KHZ_INPUT) {
@@ -3833,6 +3920,7 @@ body.et-analog-active #mm-scope-flex {
                         }
                         dataFrequencyElement.innerHTML = html;
                     }
+                    applyFreqDecimalHiding();
                     if (observer) observer.observe(dataFrequencyElement, { characterData: true, childList: true, subtree: true });
                 };
 
