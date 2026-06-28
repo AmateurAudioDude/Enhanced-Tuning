@@ -2532,9 +2532,11 @@ let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bot
     if (!isAdmin) return;
     const observer = new MutationObserver(() => {
         const fmBtn = document.querySelector('.band-selector-button[data-band-key="FM"], .band-selector-button[data-band-name="FM"]');
-        if (fmBtn && !document.getElementById('et-admin-btn')) {
-            
-            const parentContainer = fmBtn.closest('.side-band-button-container, .main-bands-wrapper');
+        const freqContainerForFallback = pluginConfig.HIDE_ALL_BUTTONS ? document.getElementById('freq-container') : null;
+        const anchor = fmBtn || freqContainerForFallback;
+        if (anchor && !document.getElementById('et-admin-btn')) {
+
+            const parentContainer = fmBtn ? fmBtn.closest('.side-band-button-container, .main-bands-wrapper') : freqContainerForFallback;
             if (parentContainer) {
                 parentContainer.style.position = 'relative';
                 const freqContainer = document.getElementById('freq-container');
@@ -2547,21 +2549,33 @@ let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bot
             settingsBtn.id = 'et-admin-btn';
             settingsBtn.innerHTML = '⚙️';
             settingsBtn.title = 'Enhanced Tuning Settings';
-            
-            const leftPosition = pluginConfig.LAYOUT_STYLE === 'modern' ? '-45px' : '-28px';
-            
-            settingsBtn.style.cssText = `
+
+            settingsBtn.style.cssText = fmBtn ? `
                 position: absolute;
                 top: 0px;
-                left: ${leftPosition};
-                background: transparent; 
-                border: none; 
-                cursor: pointer; 
-                font-size: 18px; 
+                left: ${pluginConfig.LAYOUT_STYLE === 'modern' ? '-45px' : '-28px'};
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                font-size: 18px;
                 padding: 0; /* Fjerner all ekstra plass inni knappen */
                 width: 20px; /* Fast, liten bredde */
                 height: 20px; /* Fast, liten høyde */
-                transition: transform 0.2s, text-shadow 0.2s; 
+                transition: transform 0.2s, text-shadow 0.2s;
+                color: var(--color-text);
+                z-index: 1000;
+            ` : `
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                font-size: 18px;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                transition: transform 0.2s, text-shadow 0.2s;
                 color: var(--color-text);
                 z-index: 1000;
             `;
@@ -2580,7 +2594,7 @@ let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bot
             };
 
             if (parentContainer) parentContainer.appendChild(settingsBtn);
-            else fmBtn.parentNode.insertBefore(settingsBtn, fmBtn);
+            else anchor.parentNode.insertBefore(settingsBtn, anchor);
         }
     });
     observer.observe(document.body, { childList: true, subtree: true });
