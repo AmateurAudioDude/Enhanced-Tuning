@@ -96,6 +96,30 @@ if (fs.existsSync(CONFIG_FILE)) {
     }
 }
 
+// Si47XX firmware adds LSB and USB, and tunes SSB finer than 1 kHz. The core tracks
+// neither, so the mode and exact frequency are passed on with the data sent to clients.
+const dataHandler = require('../../server/datahandler');
+const originalHandleData = dataHandler.handleData;
+
+const setSi47xxField = (key, value) => {
+    dataHandler.dataToSend[key] = value;
+    dataHandler.initialData[key] = value;
+};
+
+dataHandler.handleData = function (wss, receivedData, rdsWss) {
+    if (pluginConfig.FIRMWARE_TYPE !== 'Si47XX') return originalHandleData.apply(this, arguments);
+
+    for (const line of String(receivedData).split('\n')) {
+        if (/^M\d$/.test(line)) setSi47xxField('si47xxMode', Number(line.slice(1)));
+        else if (/^T\d/.test(line)) setSi47xxField('si47xxFreq', line.slice(1).split(',')[0]);
+    }
+    // The core drops the rest of a chunk after a T for the current frequency, which a mode switch
+    // sends, so lines queued behind it (such as the W reply) are passed on separately
+    for (const part of String(receivedData).split(/(?<=^T[^\n]*\n)/m)) {
+        if (part) originalHandleData.call(this, wss, part, rdsWss);
+    }
+};
+
 const checkStrictAdmin = (req, res, next) => {
     if (req.session && req.session.isAdminAuthenticated) return next();
     return res.status(401).send('Unauthorized. You must be an administrator.');
@@ -258,7 +282,7 @@ endpointsRouter.get('/enhanced_tuning/AP', checkStrictAdmin, (req, res) => {
                 
                 <h3 style="margin-top:30px; color:#aaa; font-size:16px;">AM Bandwidth Injection</h3>
                 ${createToggleRow('ENABLE_AM_BW', 'Enable Custom AM Bandwidth', 'Requires TEF6686_ESP32 firmware.', pluginConfig.ENABLE_AM_BW)}
-                ${createSelectRow('FIRMWARE_TYPE', 'Firmware Type', 'Select compatibility mode for bandwidth.', [{val:'TEF6686_ESP32', label:'TEF6686_ESP32 (PE5PVB)'}, {val:'FM-DX-Tuner', label:'FM-DX-Tuner (kkonrad)'}], pluginConfig.FIRMWARE_TYPE)}
+                ${createSelectRow('FIRMWARE_TYPE', 'Firmware Type', 'Select compatibility mode for bandwidth.', [{val:'TEF6686_ESP32', label:'TEF6686_ESP32 (PE5PVB)'}, {val:'FM-DX-Tuner', label:'FM-DX-Tuner (kkonrad)'}, {val:'Si47XX', label:'Si47XX (ATS-Mini)'}], pluginConfig.FIRMWARE_TYPE)}
                 ${createToggleRow('ENABLE_DEFAULT_AM_BW', 'Force Default AM BW', 'Auto-select a specific BW when entering AM.', pluginConfig.ENABLE_DEFAULT_AM_BW)}
                 ${createSelectRow('DEFAULT_AM_BW_VALUE', 'Default AM BW Value', 'Applied if forced default is enabled.', [{val:'56000', label:'3 kHz'}, {val:'64000', label:'4 kHz'}, {val:'72000', label:'6 kHz'}, {val:'84000', label:'8 kHz'}], pluginConfig.DEFAULT_AM_BW_VALUE)}
             </div>

@@ -79,10 +79,18 @@
       return freqValue;
   };
 
-  const safeTuneToFrequency = (frequencyInMHz) => { 
+  // Si47XX firmware adds LSB (mode 2) and USB (mode 3). The server side passes the
+  // tuner's mode and exact frequency on, as the core tracks neither.
+  const isSi47xx = () => pluginConfig.FIRMWARE_TYPE === 'Si47XX';
+  const getSi47xxMode = () => (isSi47xx() && window.parsedData) ? window.parsedData.si47xxMode : undefined;
+  const isSsbActive = () => getSi47xxMode() === 2 || getSi47xxMode() === 3;
+
+  const safeTuneToFrequency = (frequencyInMHz) => {
       if (typeof socket !== 'undefined' && socket && socket.readyState === WebSocket.OPEN) {
           if (isLocalScannerRunning) isInternalScannerTuning = true;
-          socket.send("T" + Math.round(parseFloat(frequencyInMHz) * 1000)); 
+          // Si47XX takes decimal kHz, so SSB can tune in 10 Hz steps
+          const khz = isSi47xx() ? Math.round(parseFloat(frequencyInMHz) * 100000) / 100 : Math.round(parseFloat(frequencyInMHz) * 1000);
+          socket.send("T" + khz);
           isInternalScannerTuning = false;
       }
   };
@@ -2625,6 +2633,12 @@ body.tune-step-enabled .freq-digit-marker {
 .et-dimmed-zero.freq-digit-marker {
     opacity: 0.9;
 }
+.et-ssb-sub-khz {
+    font-size: 0.6em;
+}
+.et-ssb-sep::before {
+    content: '.';
+}
 
 /* A2: Styles for disabled bands (Tune Limit) */
 .disabled-band {
@@ -2664,6 +2678,33 @@ body.tune-step-enabled .freq-digit-marker {
 #mw-step-toggle-button.active {
   opacity: 1;
   border-color: var(--color-4);
+}
+
+/* Si47XX mode buttons */
+#et-mode-buttons {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  z-index: 11;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#et-mode-buttons button {
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.4;
+  color: var(--color-main);
+  background-color: var(--color-2);
+  border: 1px solid var(--color-4);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#et-mode-buttons button.active {
+  background-color: var(--color-4);
 }
 
 
@@ -3493,7 +3534,25 @@ body.et-analog-active #mm-scope-flex {
             return null;
         };
 
+        // Si47XX SSB: the exact frequency to 10 Hz, which the core rounds to 1 kHz, plus a 1 Hz digit to match the radio
+        const getSsbFreqText = () => (isSsbActive() && window.parsedData.si47xxFreq !== undefined) ? (parseFloat(window.parsedData.si47xxFreq) / 1000).toFixed(6) : null;
+
+        // The sub-kHz digits are drawn smaller after a second dot, as on most radios; the dot is CSS-only so the text still parses
+        const ssbFreqHtml = (text, markerPos = -1) => text.split('').map((c, i) => {
+            const classes = [];
+            if (i >= text.length - 3) classes.push('et-ssb-sub-khz');
+            if (i === markerPos) classes.push('freq-digit-marker');
+            const sep = i === text.length - 3 ? '<span class="et-ssb-sub-khz et-ssb-sep"></span>' : '';
+            return `${sep}<span${classes.length ? ` class="${classes.join(' ')}"` : ''}>${c}</span>`;
+        }).join('');
+
         const applyFreqDecimalHiding = () => {
+            const exact = getSsbFreqText();
+            if (exact && dataFrequencyElement.textContent !== exact) {
+                dataFrequencyElement.innerHTML = ssbFreqHtml(exact);
+                return;
+            }
+
             const raw = dataFrequencyElement.textContent;
             if (!raw || raw.toLowerCase().includes('khz') || !raw.includes('.')) return;
             const value = parseFloat(raw);
@@ -3603,6 +3662,19 @@ body.et-analog-active #mm-scope-flex {
         
 
         const FM_DX_TUNER_BW_OPTIONS = { '3 kHz': 'W3000', '4 kHz': 'W4000', '6 kHz': 'W6000', '8 kHz': 'W8000' };
+        const SI47XX_AM_BW_OPTIONS = { '1 kHz': 'W1000', '1.8 kHz': 'W1800', '2 kHz': 'W2000', '2.5 kHz': 'W2500', '3 kHz': 'W3000', '4 kHz': 'W4000', '6 kHz': 'W6000' };
+        const SI47XX_SSB_BW_OPTIONS = { '0.5 kHz': 'W500', '1 kHz': 'W1000', '1.2 kHz': 'W1200', '2.2 kHz': 'W2200', '3 kHz': 'W3000', '4 kHz': 'W4000' };
+        // The radio only reports bandwidth in reply to W, so a mode switch always sends one
+        const SI47XX_DEFAULT_BW = { am: '3000', ssb: '2200' };
+
+        // Each option is [label, command, 'am' or 'ssb'], the HF mode it belongs to
+        const getTunerBwOptions = () => {
+          const tag = (options, hfMode) => Object.entries(options).map(([text, command]) => [text, command, hfMode]);
+          return isSi47xx()
+            ? [...tag(SI47XX_AM_BW_OPTIONS, 'am'), ...tag(SI47XX_SSB_BW_OPTIONS, 'ssb')]
+            : tag(FM_DX_TUNER_BW_OPTIONS, 'am');
+        };
+        const getHfBwStorageKey = () => isSsbActive() ? 'lastKnownSsbBw' : 'lastKnownAmBw';
         const AM_BW_MAPPING = { '56000': 3, '64000': 4, '72000': 6, '84000': 8 };
 
         const ALL_BANDS = {
@@ -3664,11 +3736,11 @@ body.et-analog-active #mm-scope-flex {
           const mobileBwList = document.querySelector('#data-bw-phone .options');
           if (desktopBwList) masterBwListTemplates = Array.from(desktopBwList.querySelectorAll('li')).map(li => li.cloneNode(true));
           
-          Object.entries(FM_DX_TUNER_BW_OPTIONS).forEach(([text, command]) => {
+          getTunerBwOptions().forEach(([text, command, hfMode]) => {
             const value = command.replace('W', '');
             if (desktopBwList) {
               const newLi = document.createElement('li');
-              newLi.textContent = text; newLi.dataset.value = value; newLi.classList.add('fmdx-tuner-bw-option'); newLi.style.display = 'none'; 
+              newLi.textContent = text; newLi.dataset.value = value; newLi.dataset.hfMode = hfMode; newLi.classList.add('fmdx-tuner-bw-option'); newLi.style.display = 'none'; 
               newLi.addEventListener('click', (ev) => {
                 ev.stopImmediatePropagation(); 
                 ev.preventDefault();
@@ -3686,13 +3758,13 @@ body.et-analog-active #mm-scope-flex {
                 allOptions.forEach(li => li.classList.remove('bw-option-selected'));
                 newLi.classList.add('bw-option-selected');
 
-                localStorage.setItem('lastKnownAmBw', value);
+                localStorage.setItem(hfMode === 'ssb' ? 'lastKnownSsbBw' : 'lastKnownAmBw', value);
             }, { capture: true });
               desktopBwList.appendChild(newLi);
             }
             if (mobileBwList) {
               const newLi = document.createElement('li');
-              newLi.textContent = text; newLi.dataset.value = value; newLi.classList.add('fmdx-tuner-bw-option'); newLi.style.display = 'none';
+              newLi.textContent = text; newLi.dataset.value = value; newLi.dataset.hfMode = hfMode; newLi.classList.add('fmdx-tuner-bw-option'); newLi.style.display = 'none';
               newLi.addEventListener('click', () => { if(socket) socket.send(command); });
               mobileBwList.appendChild(newLi);
             }
@@ -3702,12 +3774,12 @@ body.et-analog-active #mm-scope-flex {
         let _prevIsAmMode = null;
         const updateBwOptionsForMode = (freqInMHz) => {
           if (!pluginConfig.ENABLE_AM_BW) return;
-          const isAmMode = freqInMHz < 27.0;
+          const isAmMode = freqInMHz < (isSi47xx() ? 30.0 : 27.0);
           const isFirstRun = (_prevIsAmMode === null); 
           const justEnteredAmMode = _prevIsAmMode === false && isAmMode;
 
           if (isAmMode && (isFirstRun || justEnteredAmMode)) {
-            const lastBw = localStorage.getItem('lastKnownAmBw');
+            const lastBw = localStorage.getItem(getHfBwStorageKey()) || (justEnteredAmMode && isSi47xx() ? SI47XX_DEFAULT_BW[isSsbActive() ? 'ssb' : 'am'] : null);
             if (lastBw) {
               setTimeout(() => { 
                 if (typeof socket !== 'undefined' && socket && socket.readyState === WebSocket.OPEN) {
@@ -3731,7 +3803,9 @@ body.et-analog-active #mm-scope-flex {
               const isTunerOption = li.classList.contains('fmdx-tuner-bw-option');
               const value = li.dataset.value;
               if (isAmMode) {
-                if (pluginConfig.FIRMWARE_TYPE === 'FM-DX-Tuner') li.style.display = isTunerOption ? '' : 'none';
+                if (pluginConfig.FIRMWARE_TYPE === 'FM-DX-Tuner' || isSi47xx()) {
+                    li.style.display = isTunerOption && li.dataset.hfMode === (isSsbActive() ? 'ssb' : 'am') ? '' : 'none';
+                }
                 else { 
                     const isRel = !isTunerOption && amValuesToShow.has(value);
                     li.style.display = isRel ? '' : 'none';
@@ -3752,7 +3826,7 @@ body.et-analog-active #mm-scope-flex {
                 if (targetLi) targetLi.click();
               }
           }
-        const currentSavedBw = localStorage.getItem('lastKnownAmBw');
+        const currentSavedBw = localStorage.getItem(getHfBwStorageKey());
           if (currentSavedBw) {
             allBwItems.forEach(li => {
                 if (li.dataset.value === currentSavedBw) {
@@ -3889,7 +3963,21 @@ body.et-analog-active #mm-scope-flex {
                     { step: 0.001, markerIndex: -1 }, { step: 0.010, markerIndex: -2 },
                     { step: 0.100, markerIndex: -3 }, { step: 1.000, markerIndex: -5 },
                 ];
+                // Si47XX SSB adds 10 Hz and 100 Hz steps; its last decimal (1 Hz) has no step
+                const SSB_TUNE_STEP_CONFIG = [
+                    { step: 0.00001, markerIndex: -2 }, { step: 0.0001, markerIndex: -3 },
+                    { step: 0.001, markerIndex: -4 }, { step: 0.010, markerIndex: -5 },
+                    { step: 0.100, markerIndex: -6 }, { step: 1.000, markerIndex: -8 },
+                ];
                 let currentTuneStepIndex = -1;
+                let tuneStepConfig = TUNE_STEP_CONFIG;
+                const syncTuneStepConfig = () => {
+                    const config = isSsbActive() ? SSB_TUNE_STEP_CONFIG : TUNE_STEP_CONFIG;
+                    if (config === tuneStepConfig) return;
+                    const step = currentTuneStepIndex === -1 ? null : tuneStepConfig[currentTuneStepIndex].step;
+                    tuneStepConfig = config;
+                    currentTuneStepIndex = config.findIndex(c => c.step === step);
+                };
                 let tuneStepResetTimer = null;
                 let startResetTimer = () => {};
 
@@ -3905,12 +3993,16 @@ body.et-analog-active #mm-scope-flex {
                 }
 
                 updateFrequencyDisplayWithMarker = () => {
-                    const originalText = dataFrequencyElement.textContent;
+                    syncTuneStepConfig();
+                    const ssbText = getSsbFreqText();
+                    const originalText = ssbText || dataFrequencyElement.textContent;
                     if (observer) observer.disconnect();
-                    if (currentTuneStepIndex === -1) {
+                    if (ssbText) {
+                        dataFrequencyElement.innerHTML = ssbFreqHtml(ssbText, currentTuneStepIndex === -1 ? -1 : ssbText.length + tuneStepConfig[currentTuneStepIndex].markerIndex);
+                    } else if (currentTuneStepIndex === -1) {
                         dataFrequencyElement.innerHTML = originalText;
                     } else {
-                        const config = TUNE_STEP_CONFIG[currentTuneStepIndex];
+                        const config = tuneStepConfig[currentTuneStepIndex];
                         const textOnly = originalText.replace(/[^\d.]/g, '');
                         const chars = textOnly.split('');
                         const markerPos = chars.length + config.markerIndex;
@@ -3926,6 +4018,7 @@ body.et-analog-active #mm-scope-flex {
                 };
 
                 handleCustomStepTune = (direction) => {
+                    syncTuneStepConfig();
                     if (currentTuneStepIndex === -1) return false;
                     const currentFreq = getCurrentFrequencyInMHz();
                     if (isNaN(currentFreq)) return true;
@@ -3933,8 +4026,11 @@ body.et-analog-active #mm-scope-flex {
                     let newFreq;
                     const isFmBand = (currentFreq >= 64.0);
                     const directionMultiplier = (direction === 'up' ? 1 : -1);
+                    const ssb = tuneStepConfig === SSB_TUNE_STEP_CONFIG;
 
-                    if (isFmBand) {
+                    if (ssb) {
+                        newFreq = currentFreq + (tuneStepConfig[currentTuneStepIndex].step * directionMultiplier);
+                    } else if (isFmBand) {
                         let stepSize = TUNE_STEP_CONFIG[currentTuneStepIndex].step;
                         if (currentTuneStepIndex === 2) {
                             stepSize = (pluginConfig.TUNING_STANDARD === 'americas') ? 0.200 : 0.100;
@@ -3961,7 +4057,7 @@ body.et-analog-active #mm-scope-flex {
                         }
                     }
 
-                    tuneToFrequency(newFreq.toFixed(3));
+                    tuneToFrequency(newFreq.toFixed(ssb ? 5 : 3));
                     startResetTimer();
                     return true;
                 };
@@ -3970,11 +4066,12 @@ body.et-analog-active #mm-scope-flex {
                     if (e.target.closest('#mw-step-toggle-button, .loop-toggle-button, #band-range-container, .band-selector-button')) return;
                     e.preventDefault(); e.stopImmediatePropagation();
 
+                    syncTuneStepConfig();
                     currentTuneStepIndex++;
                     const freqInMHz = getCurrentFrequencyInMHz();
                     const isFmBand = (freqInMHz >= 64.0);
                     if (isFmBand && currentTuneStepIndex === 0) currentTuneStepIndex = 1;
-                    if (currentTuneStepIndex >= TUNE_STEP_CONFIG.length) currentTuneStepIndex = -1;
+                    if (currentTuneStepIndex >= tuneStepConfig.length) currentTuneStepIndex = -1;
                     
                     updateFrequencyDisplayWithMarker();
                     startResetTimer();
@@ -4015,7 +4112,14 @@ body.et-analog-active #mm-scope-flex {
                 if (handleCustomStepTune(direction)) {
                     event.preventDefault(); event.stopImmediatePropagation(); return;
                 }
-                
+
+                // Si47XX SSB: 100 Hz steps
+                if (isSsbActive()) {
+                    const freq = getCurrentFrequencyInMHz() + (direction === 'up' ? 0.0001 : -0.0001);
+                    tuneToFrequency(freq.toFixed(5));
+                    event.preventDefault(); event.stopImmediatePropagation(); return;
+                }
+
                 if (pluginConfig.TUNING_STANDARD === 'americas') {
                     const currentFreq = getCurrentFrequencyInMHz();
                     const isFmBand = currentFreq >= ALL_BANDS['FM'].start && currentFreq <= ALL_BANDS['FM'].end;
@@ -4081,10 +4185,14 @@ body.et-analog-active #mm-scope-flex {
                         if (isNaN(baseFreq)) return;
 
                         let step = 0.1; // Default standard FM
+                        const ssb = isSsbActive();
+                        const decimals = ssb ? 5 : 3;
 
                         if (isFineTuning) {
-                            // INNER KNOB FIX: 10 kHz (0.01) for FM, 1 kHz (0.001) for AM/SW
-                            step = (baseFreq < 30.0) ? 0.001 : 0.01;
+                            // INNER KNOB FIX: 10 kHz (0.01) for FM, 1 kHz (0.001) for AM/SW, 100 Hz for Si47XX SSB
+                            step = (baseFreq < 30.0) ? (ssb ? 0.0001 : 0.001) : 0.01;
+                        } else if (ssb) {
+                            step = 0.001;
                         } else {
                             // OUTER KNOB: Standard Left/Right tuning logic
                             if (baseFreq < 30.0) {
@@ -4104,9 +4212,9 @@ body.et-analog-active #mm-scope-flex {
                         virtualKeyFreq = baseFreq + (step * dirMult);
 
                         // Rounding safeguards
-                        if (isFineTuning) {
-                            // Fix floating point errors for up to 3 decimals (1 kHz precision)
-                            virtualKeyFreq = Math.round(virtualKeyFreq * 1000) / 1000;
+                        if (isFineTuning || ssb) {
+                            // Fix floating point errors for up to 3 decimals (1 kHz precision), 5 in SSB
+                            virtualKeyFreq = Math.round(virtualKeyFreq * 10 ** decimals) / 10 ** decimals;
                         } else {
                             if (baseFreq < 30.0) {
                                 virtualKeyFreq = Math.round(virtualKeyFreq / step) * step;
@@ -4118,7 +4226,7 @@ body.et-analog-active #mm-scope-flex {
                         // 6. FORCE DOM UPDATE
                         const freqDisplay = document.getElementById('frequency') || document.querySelector('.freq-value');
                         if (freqDisplay) {
-                            freqDisplay.innerText = virtualKeyFreq.toFixed(3);
+                            freqDisplay.innerText = virtualKeyFreq.toFixed(decimals);
                         }
                         
                         if (typeof updateVisualsByFrequency === 'function') updateVisualsByFrequency(virtualKeyFreq);
@@ -4126,13 +4234,13 @@ body.et-analog-active #mm-scope-flex {
                         // 7. Throttling / Debouncing to protect the ESP32
                         const now = Date.now();
                         if (now - lastKeyTuneTime > 200) {
-                            safeTuneToFrequency(virtualKeyFreq.toFixed(3));
+                            safeTuneToFrequency(virtualKeyFreq.toFixed(decimals));
                             lastKeyTuneTime = now;
                         }
 
                         clearTimeout(finalKeyTuneTimer);
                         finalKeyTuneTimer = setTimeout(() => {
-                            safeTuneToFrequency(virtualKeyFreq.toFixed(3));
+                            safeTuneToFrequency(virtualKeyFreq.toFixed(decimals));
                             virtualKeyFreq = null; 
                             lastKeyTuneTime = Date.now();
                         }, 250);
@@ -4811,6 +4919,39 @@ body.et-analog-active #mm-scope-flex {
             }
             originalTuneHandler(event, direction);
           };
+        }
+
+        // Si47XX firmware: AM, LSB and USB on HF
+        if (isSi47xx()) {
+          const modeButtons = document.createElement('div');
+          modeButtons.id = 'et-mode-buttons';
+          [['AM', 1], ['USB', 3], ['LSB', 2]].forEach(([label, mode]) => {
+            const button = document.createElement('button');
+            button.textContent = label;
+            button.dataset.mode = mode;
+            button.addEventListener('click', (e) => {
+              e.stopPropagation(); e.preventDefault();
+              if (typeof socket === 'undefined' || !socket || socket.readyState !== WebSocket.OPEN) return;
+              socket.send(`M${mode}`);
+              // Each mode keeps its own last bandwidth
+              const bw = localStorage.getItem(mode === 1 ? 'lastKnownAmBw' : 'lastKnownSsbBw') || SI47XX_DEFAULT_BW[mode === 1 ? 'am' : 'ssb'];
+              setTimeout(() => socket.send(`W${bw}`), 300);
+            });
+            modeButtons.appendChild(button);
+          });
+          freqContainer.appendChild(modeButtons);
+
+          let shownMode;
+          setInterval(() => {
+            const freqMhz = getCurrentFrequencyInMHz();
+            const mode = getSi47xxMode();
+            modeButtons.style.display = freqMhz < 30 ? 'flex' : 'none';
+            if (mode === shownMode) return;
+            shownMode = mode;
+            modeButtons.querySelectorAll('button').forEach(b => b.classList.toggle('active', Number(b.dataset.mode) === mode));
+            applyFreqDecimalHiding();
+            if (pluginConfig.ENABLE_AM_BW && !isNaN(freqMhz)) updateBwOptionsForMode(freqMhz);
+          }, 500);
         }
 
         console.log(`[Enhanced Tuning] v3.0 loaded successfully.`);
