@@ -2497,10 +2497,10 @@ let html = `<div style="font-size:16px; font-weight:bold; color:#fff; margin-bot
               } catch(e) {}
           }
 
-          if (pluginConfig && pluginConfig.overrideServerTuningLimit && /^T\d+$/.test(data)) {
+          if (pluginConfig && pluginConfig.overrideServerTuningLimit && /^T\d+(\.\d+)?$/.test(data)) {
               if (isLocalScannerRunning && !isInternalScannerTuning) _stopLocalScanner();
 
-              let freqMhz = parseInt(data.substring(1), 10) / 1000;
+              let freqMhz = parseFloat(data.substring(1)) / 1000;
               
               if (freqMhz > 0) {
                   const isFm = freqMhz >= 64.0;
